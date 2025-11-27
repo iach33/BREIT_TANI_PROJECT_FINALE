@@ -11,6 +11,8 @@ wheels/
 
 /docs
 
+*.csv
+*.png
+*.html
+*.jpg
 *.xlsx
-
-*.ipynb
