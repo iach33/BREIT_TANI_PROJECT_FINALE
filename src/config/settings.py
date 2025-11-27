@@ -9,10 +9,17 @@ RAW_DATA_DIR = DATA_DIR / "raw"
 INTERMEDIATE_DATA_DIR = DATA_DIR / "intermediate"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
 EXTERNAL_DATA_DIR = DATA_DIR / "external"
+FIGURES_DIR = PROJECT_ROOT / "reports" / "figures"
 
-# File paths
+# Ensure directories exist
+RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
+PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
+FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+
+# File names
 DATA_FILE_NEW = RAW_DATA_DIR / "DATA PROYECTO BREIT.xlsx"
 DATA_FILE_OLD = RAW_DATA_DIR / "DATA 2009-2016.xlsx"
+DATA_FILE_UBIGEO = RAW_DATA_DIR / "UBIGEO - CONSEJERÍAS.xlsx"
 
 # Column names (Constants)
 COL_FECHA = "Fecha"

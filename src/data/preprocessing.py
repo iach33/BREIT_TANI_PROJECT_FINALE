@@ -254,3 +254,36 @@ def consolidar_datasets(df_nut_new, df_dev_new, df_nut_old, df_dev_old, output_d
         
     return df_final
 
+def filtrar_poblacion_objetivo(df):
+    """
+    Filtra la población objetivo:
+    - Pacientes del 2023 en adelante.
+    - Que hayan tenido hasta 3 controles esperados (1, 2 o 3).
+    - Con al menos 6 controles previos al primer déficit (o total si no tienen déficit).
+    - Con último control >= 19 (según lógica del notebook).
+    """
+    # Asegurar tipo fecha
+    if not pd.api.types.is_datetime64_any_dtype(df['Fecha']):
+        df['Fecha'] = pd.to_datetime(df['Fecha'], errors='coerce')
+
+    # Filtro temporal y de controles
+    # Nota: Se asume que las columnas 'primer_control_esperado', 'cant_controles_primer_alguna', 'ultimo_control'
+    # ya han sido calculadas y existen en el DF.
+    
+    mask = (
+        (df['Fecha'].dt.year >= 2023) & 
+        (df['primer_control_esperado'].isin([1,2,3])) & 
+        (df['cant_controles_primer_alguna'] >= 6) & 
+        (df['ultimo_control'] >= 19)
+    )
+    
+    df_filtrado_temp = df[mask].copy()
+    
+    # Obtener N_HC únicos que cumplen el criterio
+    nhc_validos = df_filtrado_temp['N_HC'].unique()
+    
+    # Filtrar el DF original para mantener todo el historial de esos pacientes
+    df_final = df[df['N_HC'].isin(nhc_validos)].copy()
+    
+    return df_final
+
