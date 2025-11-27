@@ -7,85 +7,48 @@ sys.path.append(str(PROJECT_ROOT / "src"))
 
 import pandas as pd
 from config import settings
-from data import preprocessing
-from features import build_features
 from visualization import visualize
 
 def main():
-    print("Loading data...")
-    try:
-        # Load New Data (2017-2025)
-        print("Loading New Data (2017-2025)...")
-        df_nut_new = pd.read_excel(settings.DATA_FILE_NEW, sheet_name="DESNUTRICION")
-        df_dev_new = pd.read_excel(settings.DATA_FILE_NEW, sheet_name="DESARROLLO")
-        
-        # Load Old Data (2009-2016)
-        print("Loading Old Data (2009-2016)...")
-        df_nut_old = pd.read_excel(settings.DATA_FILE_OLD, sheet_name="NUTRICION")
-        df_dev_old = pd.read_excel(settings.DATA_FILE_OLD, sheet_name="DESARROLLO")
-        
-        print(f"Loaded rows: New(Nut={len(df_nut_new)}, Dev={len(df_dev_new)}), Old(Nut={len(df_nut_old)}, Dev={len(df_dev_old)})")
-        
-    except Exception as e:
-        print(f"Error loading data: {e}")
+    print("=== Starting EDA Pipeline ===")
+    
+    # 1. Load Processed Data
+    input_file = settings.PROCESSED_DATA_DIR / "tani_analytical_dataset.csv"
+    print(f"Loading processed data from: {input_file}")
+    
+    if not input_file.exists():
+        print(f"Error: File not found. Please run 'src/pipelines/run_preprocessing.py' first.")
         return
-
-    print("Consolidating datasets...")
-    intermediate_dir = settings.INTERMEDIATE_DATA_DIR
-    df = preprocessing.consolidar_datasets(
-        df_nut_new, df_dev_new, 
-        df_nut_old, df_dev_old, 
-        output_dir=str(intermediate_dir)
-    )
-    print(f"Consolidated dataset shape: {df.shape}")
-
-    print("Preprocessing data...")
-    df = preprocessing.limpiar_pacientes(df)
-    
-    # Save preprocessed v1
-    df.to_csv(intermediate_dir / "tani_preprocessed_1.csv", index=False)
-    
-    print("Building features...")
-    if 'Edad' in df.columns:
-        df['edad_meses'] = df['Edad'].apply(build_features.edad_a_meses)
-    
-    # Calculate flags
-    # Ensure columns exist before calculating
-    if '(C) - Cog' in df.columns:
-        df['flg_cognitivo'] = build_features.calcular_flg_desarrollo(df, '(C) - Cog')
-    if '(L) - Len' in df.columns:
-        df['flg_lenguaje'] = build_features.calcular_flg_desarrollo(df, '(L) - Len')
-    if '(M) - FF' in df.columns:
-        df['flg_motora_fina'] = build_features.calcular_flg_desarrollo(df, '(M) - FF')
-    if '(M) - FG' in df.columns:
-        df['flg_motora_gruesa'] = build_features.calcular_flg_desarrollo(df, '(M) - FG')
-    if '(S) - Soc' in df.columns:
-        df['flg_social'] = build_features.calcular_flg_desarrollo(df, '(S) - Soc')
         
-    df['flg_alguna'] = build_features.calcular_flg_alguna(df)
-    
-    # Save final processed
-    df.to_csv(intermediate_dir / "tani_preprocessed_final_v2.csv", index=False)
+    df = pd.read_csv(input_file)
+    print(f"Loaded {len(df)} rows.")
 
-    print("Visualizing...")
-    output_path = settings.PROJECT_ROOT / "reports" / "figures" / "eda_histograms.png"
+    # 2. Visualization
+    print("Generating Visualizations...")
     
-    # Select some numeric columns to plot
-    numeric_cols = ['edad_meses', 'Peso', 'Talla']
+    # Define output path
+    output_dir = settings.PROJECT_ROOT / "reports" / "figures"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / "eda_histograms.png"
+    
+    # Select numeric columns to plot
+    # We can be more specific now that we know the features
+    numeric_cols = ['edad_meses', 'Peso', 'Talla', 'CabPC']
     # Filter only existing columns
     numeric_cols = [c for c in numeric_cols if c in df.columns]
     
     if numeric_cols:
+        print(f"Plotting histograms for: {numeric_cols}")
         visualize.plot_grid_hist(
             df, 
             cols=numeric_cols, 
-            title="EDA Histograms", 
+            title="EDA Histograms - Analytical Dataset", 
             save_path=str(output_path)
         )
     else:
         print("No numeric columns found to visualize.")
     
-    print("Done!")
+    print("=== EDA Completed Successfully ===")
 
 if __name__ == "__main__":
     main()
