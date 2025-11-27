@@ -69,6 +69,8 @@ uv run src/pipelines/02_eda.py
 
 ## 📊 Diccionario de Datos (Salidas)
 
+Para un detalle completo de cada variable, consulta el [Diccionario de Datos](references/data_dictionary.md).
+
 | Archivo | Descripción | Uso Principal |
 | :--- | :--- | :--- |
 | **`tani_model_ready.csv`** | Una fila por paciente. Contiene features de ventana (últimos 6 controles), features del primer año de vida, e intensidad de consejería. Sin nulos. | **Entrenamiento de Modelos** |

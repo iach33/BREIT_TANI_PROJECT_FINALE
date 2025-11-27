@@ -389,6 +389,59 @@ def calcular_features_primer_anio(df):
     features = df_first_year.groupby('N_HC').apply(agg_func).reset_index()
     return features
 
+def calcular_features_hitos(df, hitos_meses=[12, 24, 36], tolerancia=1):
+    """
+    Captura el estado nutricional (Z-scores) en hitos de edad específicos.
+    Ej: Z-score Peso/Talla a los 12 meses.
+    
+    Args:
+        df: DataFrame con historial.
+        hitos_meses: Lista de edades en meses a capturar.
+        tolerancia: Meses de tolerancia (+/-) para encontrar un control cercano.
+        
+    Returns:
+        DataFrame con features por N_HC.
+    """
+    required_cols = ['N_HC', 'edad_meses', '_PT_z', '_TE_z', '_PE_z']
+    if not all(c in df.columns for c in required_cols):
+        return pd.DataFrame()
+        
+    features_list = []
+    
+    # Procesar cada hito
+    for hito in hitos_meses:
+        # Filtrar controles en el rango [hito - tol, hito + tol]
+        mask = (df['edad_meses'] >= hito - tolerancia) & (df['edad_meses'] <= hito + tolerancia)
+        df_hito = df[mask].copy()
+        
+        if df_hito.empty:
+            continue
+            
+        # Si hay múltiples controles en el rango, tomar el más cercano al hito exacto
+        df_hito['distancia_hito'] = abs(df_hito['edad_meses'] - hito)
+        # Ordenar por distancia y tomar el primero por paciente
+        df_hito = df_hito.sort_values(['N_HC', 'distancia_hito'])
+        df_hito = df_hito.drop_duplicates(subset=['N_HC'], keep='first')
+        
+        # Seleccionar columnas de interés y renombrar
+        cols_z = ['_PT_z', '_TE_z', '_PE_z']
+        df_res = df_hito[['N_HC'] + cols_z].copy()
+        
+        rename_map = {c: f'z_{c.replace("_", "").replace("z", "")}_{hito}m' for c in cols_z}
+        df_res = df_res.rename(columns=rename_map)
+        
+        features_list.append(df_res)
+        
+    if not features_list:
+        return pd.DataFrame(columns=['N_HC'])
+        
+    # Merge de todos los hitos
+    df_final = features_list[0]
+    for df_next in features_list[1:]:
+        df_final = df_final.merge(df_next, on='N_HC', how='outer')
+        
+    return df_final
+
 def calcular_intensidad_consejeria(df):
     """
     Calcula la intensidad de consejería recibida (suma de flags).

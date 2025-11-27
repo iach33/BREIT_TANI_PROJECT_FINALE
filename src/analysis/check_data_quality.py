@@ -73,4 +73,4 @@ def check_quality(file_path):
         print("No constant columns found.")
 
 if __name__ == "__main__":
-    check_quality(settings.PROCESSED_DATA_DIR / "tani_patient_features.csv")
+    check_quality(settings.PROCESSED_DATA_DIR / "tani_model_ready.csv")

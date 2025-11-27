@@ -17,7 +17,8 @@ def inspect_dataset(file_path, name):
     print(f"Shape: {df.shape}")
     
     # Columns to check
-    new_features = [
+    # Columns to check
+    cols_to_check = [
         'flg_anemia', 'flg_prematuro', 'flg_bajo_peso_nacer', 'flg_macrosomia',
         'flg_desnutricion_cronica', 'flg_desnutricion_aguda', 'flg_sobrepeso', 'flg_obesidad',
         'intensidad_consejeria',
@@ -26,25 +27,28 @@ def inspect_dataset(file_path, name):
         'flg_desnutricion_cronica_window', 'flg_desnutricion_aguda_window', 
         'flg_sobrepeso_window', 'flg_obesidad_window', 'intensidad_consejeria_window_sum',
         # First Year Features
-        'n_controles_primer_anio', 'flg_desnutricion_primer_anio', 'flg_anemia_primer_anio'
+        'n_controles_primer_anio', 'flg_desnutricion_primer_anio', 'flg_anemia_primer_anio',
+        # Milestone Features
+        'z_PT_12m', 'z_TE_12m', 'z_PE_12m',
+        'z_PT_24m', 'z_TE_24m', 'z_PE_24m'
     ]
     
-    # Check if columns exist
-    existing_cols = [c for c in new_features if c in df.columns]
+    # Filter only existing columns
+    cols_to_check = [c for c in cols_to_check if c in df.columns]
     
-    if not existing_cols:
-        print("No new features found in this dataset.")
+    if not cols_to_check:
+        print("No features found to inspect.")
         return
 
     print("\n--- Feature Statistics ---")
-    for col in existing_cols:
+    for col in cols_to_check:
         print(f"\nFeature: {col}")
         print(f"Missing: {df[col].isna().sum()} ({df[col].isna().mean():.2%})")
         print("Value Counts:")
         print(df[col].value_counts(dropna=False).head())
 
     # Check Tam_hb specifically if flg_anemia is present
-    if 'flg_anemia' in existing_cols and 'Tam_hb' in df.columns:
+    if 'flg_anemia' in cols_to_check and 'Tam_hb' in df.columns:
         print("\n--- Tam_hb vs flg_anemia ---")
         print(f"Tam_hb Missing: {df['Tam_hb'].isna().sum()}")
         print(df[['Tam_hb', 'flg_anemia']].head(10))

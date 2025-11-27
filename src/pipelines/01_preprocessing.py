@@ -208,6 +208,14 @@ def main():
             for c in fill_cols:
                 if c in df_features.columns:
                     df_features[c] = df_features[c].fillna(0)
+                    
+        # Calculate Milestone Features (12m, 24m, 36m)
+        print("Calculating Milestone Features (12m, 24m, 36m)...")
+        df_hitos = build_features.calcular_features_hitos(df_merged, hitos_meses=[12, 24, 36])
+        
+        if not df_hitos.empty:
+            df_features = df_features.merge(df_hitos, on='N_HC', how='left')
+            # Note: We do NOT fill NaNs here yet, the cleaning script will handle them (imputation)
         
         # Save Patient Features
         output_features = settings.PROCESSED_DATA_DIR / "tani_patient_features.csv"

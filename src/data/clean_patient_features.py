@@ -51,6 +51,9 @@ def clean_patient_features(input_path, output_path):
                 df[col] = df[col].fillna(0)
             else:
                 # Continuous stats (mean, min, max, std, Z-scores) -> Median
+                # Ensure numeric first (coerce errors like 'N' to NaN)
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+                
                 median_val = df[col].median()
                 df[col] = df[col].fillna(median_val)
                 
