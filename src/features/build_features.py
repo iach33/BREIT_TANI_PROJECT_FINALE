@@ -484,7 +484,8 @@ def calculate_slope(series, x_values=None):
 
 def features_6prev_window(
     df,
-    vars_cols=('Peso','Talla','CabPC','edad_meses','control_esperado','_TE_z','_PE_z','_PT_z'),
+    vars_cols=('Peso','Talla','CabPC','edad_meses','control_esperado','_TE_z','_PE_z','_PT_z',
+               'zscore_peso_edad', 'zscore_talla_edad', 'zscore_peso_talla'),
     columnas_consejeria=['flg_consj_lact_materna', 'flg_consj_higne_corporal', 
                          'flg_consj_higne_bucal', 'flg_consj_supl_hierro', 
                          'flg_consj_desarrollo', 'flg_consj_vacunas'],

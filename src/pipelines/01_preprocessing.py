@@ -8,7 +8,7 @@ sys.path.append(str(PROJECT_ROOT / "src"))
 import pandas as pd
 from config import settings
 from data import preprocessing
-from features import build_features
+from features import build_features, oms_zscores
 
 def main():
     print("=== Starting Preprocessing Pipeline ===")
@@ -192,6 +192,14 @@ def main():
         # Calculate Counseling Intensity
         df_merged['intensidad_consejeria'] = build_features.calcular_intensidad_consejeria(df_merged)
         
+        # Calculate OMS Z-scores (New Request)
+        print("Calculating OMS Z-scores (WFA, HFA, WFH)...")
+        oms_tables = oms_zscores.cargar_tablas_oms()
+        if oms_tables:
+            df_merged = oms_zscores.calcular_zscores_oms(df_merged, oms_tables)
+        else:
+            print("Warning: OMS tables not loaded. Skipping OMS Z-scores.")
+
         # Calculate Window Features
         print("Calculating Window Features (this may take a while)...")
         df_features = build_features.features_6prev_window(df_merged)

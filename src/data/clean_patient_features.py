@@ -54,8 +54,13 @@ def clean_patient_features(input_path, output_path):
                 # Ensure numeric first (coerce errors like 'N' to NaN)
                 df[col] = pd.to_numeric(df[col], errors='coerce')
                 
-                median_val = df[col].median()
-                df[col] = df[col].fillna(median_val)
+                # Check if column is all NaN after coercion
+                if df[col].notna().sum() > 0:
+                    median_val = df[col].median()
+                    df[col] = df[col].fillna(median_val)
+                else:
+                    # If all NaN, fill with 0 (fallback)
+                    df[col] = df[col].fillna(0)
                 
     print(f"Missing values after imputation: {df.isna().sum().sum()}")
     

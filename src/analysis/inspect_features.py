@@ -30,7 +30,9 @@ def inspect_dataset(file_path, name):
         'n_controles_primer_anio', 'flg_desnutricion_primer_anio', 'flg_anemia_primer_anio',
         # Milestone Features
         'z_PT_12m', 'z_TE_12m', 'z_PE_12m',
-        'z_PT_24m', 'z_TE_24m', 'z_PE_24m'
+        'z_PT_24m', 'z_TE_24m', 'z_PE_24m',
+        # OMS Window Features
+        'pre6_mean__zscore_peso_edad', 'pre6_mean__zscore_talla_edad', 'pre6_mean__zscore_peso_talla'
     ]
     
     # Filter only existing columns

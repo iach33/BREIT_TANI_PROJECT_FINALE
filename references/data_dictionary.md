@@ -28,7 +28,8 @@ Prefijo: `pre6_`
 *   `Peso`, `Talla`, `CabPC` (Perímetro Cefálico).
 *   `edad_meses`: Edad del niño.
 *   `control_esperado`: Número de control según norma técnica.
-*   `_TE_z`, `_PE_z`, `_PT_z`: Z-scores de Talla/Edad, Peso/Edad, Peso/Talla.
+*   `_TE_z`, `_PE_z`, `_PT_z`: Z-scores de Talla/Edad, Peso/Edad, Peso/Talla (Originales del dataset).
+*   `zscore_peso_edad`, `zscore_talla_edad`, `zscore_peso_talla`: **Z-scores calculados con tablas OMS (LMS)**.
 
 ## 3. Tendencias (Slopes)
 

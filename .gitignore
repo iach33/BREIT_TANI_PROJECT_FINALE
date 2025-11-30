@@ -16,3 +16,5 @@ wheels/
 *.html
 *.jpg
 *.xlsx
+
+EDA_FINAL.ipynb
