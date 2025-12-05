@@ -1,0 +1,152 @@
+---
+title: "Child Development Project Report: Predictive Analysis of Early Childhood Development Deficits"
+subtitle: "NGO Applied Project - BREIT"
+author: "Angel Choquehuanca, Luis Torpoco, Alan Fraquita, Edson Hoyos"
+date: today
+format:
+  pdf:
+    toc: true
+    number-sections: true
+    colorlinks: true
+---
+
+# Executive Summary
+
+This report presents a comprehensive predictive analysis of early childhood development deficits for **Asociación Taller de los Niños (TANI)**, a Peruvian NGO with over 45 years of experience serving vulnerable children and families. Through data science methodologies, we analyze pre- and post-pandemic health records to develop actionable predictive models that identify children at highest risk of developmental delays.
+
+**Key Findings:**
+
+*   **Random Forest** was identified as the best performing model (AUC: 0.8135), effectively distinguishing between at-risk and normal development trajectories.
+*   **Critical Risk Factors**: The analysis highlighted that **age** (younger infants are more vulnerable), **counseling intensity** (protective factor), and **vaccination history** are the strongest predictors of developmental deficits.
+*   **Data-Driven Impact**: This work provides TANI with a decision-support framework to optimize early intervention strategies, improving outcomes for vulnerable children through data-driven prioritization.
+
+# 1. Introduction and Context
+
+## 1.1. Background on TANI
+
+Asociación Taller de los Niños (TANI) is a non-governmental organization based in Peru, dedicated to improving the quality of life for children and families in vulnerable situations. With over 45 years of operational experience, TANI focuses particularly on the critical early years of life (0-5 years), implementing a comprehensive approach that integrates health, nutrition, and community strengthening.
+
+## 1.2. Child Development Deficit Context
+
+Early childhood development (ECD) deficits represent a critical public health challenge. In Peru, despite economic growth, disparities persist. The period from conception to age 3 (the first 1,000 days) is a critical window where nutritional and environmental insults can lead to irreversible stunting and neurodevelopmental impairment.
+
+## 1.3. Project Objectives
+
+**Primary Objective:** Develop and validate machine learning models to predict early childhood development deficits, enabling proactive identification of at-risk children.
+
+**Secondary Objectives:**
+1.  Conduct comprehensive Exploratory Data Analysis (EDA).
+2.  Transform raw clinical measurements into actionable predictive features.
+3.  Compare multiple predictive algorithms (Logistic Regression, Random Forest, XGBoost, LightGBM).
+4.  Provide evidence-based recommendations.
+
+# 2. Data Reception and Consolidation
+
+The analysis utilizes three primary data sources provided by TANI: **Malnutrition** (growth monitoring), **Development** (screening results), and **Medical Advice**.
+
+**Consolidation Process:**
+We implemented a systematic pipeline to clean and merge these datasets, addressing challenges such as inconsistent formatting, missing values, and duplicate records. The final consolidated dataset provides a longitudinal view of each child's health and development history.
+
+# 3. Exploratory Data Analysis (EDA)
+
+## 3.1. Population Definition
+
+To ensure a robust analysis, we focused on the population with records from **2023 onwards**, as this period reflects the most current operational definitions of "deficit" and provides a more reliable target variable.
+
+**Filtered Population Stats:**
+*   Total Patients (2023+): 3,721
+*   Positive Class Balance (Deficit): ~1.26%
+
+## 3.2. Key Insights
+
+The exploratory analysis revealed distinct patterns in the data.
+
+![Distribution of Features by Deficit Status](figures/eda_histograms_by_deficit.png){width=90%}
+
+*   **Weight & Prematurity**: Lower birth weight and premature birth are associated with higher deficit rates.
+*   **Vaccination**: There is an inverse relationship between vaccination sessions and deficit; children with lower participation show higher risk.
+*   **Age**: Deficits are often detected in the first 12 months, highlighting the importance of early monitoring.
+
+# 4. Predictive Modeling Methodology
+
+We implemented a rigorous machine learning pipeline to ensure robustness and explicability.
+
+## 4.1. Feature Selection
+To reduce noise and dimensionality, we applied a multi-stage selection process:
+1.  **Information Value (IV)**: Filtered features with low predictive power (< 0.02).
+2.  **Correlation Filter**: Removed redundant features (> 0.9 correlation).
+3.  **Base Model Importance**: Validated top features using a preliminary Random Forest.
+
+## 4.2. Data Preparation
+*   **Split**: Stratified 80/20 split to maintain class proportions.
+*   **Imputación**: Median imputation for missing values.
+*   **Scaling**: StandardScaler for normalization.
+*   **Class Imbalance**: **SMOTE** (Synthetic Minority Over-sampling Technique) was applied to the training set to address the low prevalence of deficits (~3%).
+
+## 4.3. Model Training & Optimization
+We trained four algorithms, each with two strategies:
+1.  **Baseline**: Default hyperparameters.
+2.  **Optimized**: `RandomizedSearchCV` with 3-fold stratified cross-validation.
+
+**Algorithms**: Logistic Regression, Random Forest, XGBoost, LightGBM.
+
+# 5. Modeling Results
+
+## 5.1. Model Comparison
+
+The following table summarizes the performance of the trained models. **Random Forest (Baseline)** emerged as the top performer based on AUC.
+
+```{python}
+#| echo: false
+import pandas as pd
+from IPython.display import Markdown
+
+df = pd.read_csv("model_comparison.csv")
+# Format the table for display
+markdown_table = df.to_markdown(index=False)
+Markdown(markdown_table)
+```
+
+## 5.2. Performance Visualization
+
+The ROC Curve and Confusion Matrix for the best model (Random Forest) demonstrate its ability to balance sensitivity and specificity.
+
+::: {layout-ncol=2}
+![ROC Curve - Random Forest](figures/modeling/roc_RandomForest_Baseline.png)
+
+![Confusion Matrix - Random Forest](figures/modeling/cm_RandomForest_Baseline.png)
+:::
+
+# 6. Interpretability (SHAP Analysis)
+
+To understand *why* the model makes specific predictions, we used **SHAP (SHapley Additive exPlanations)**.
+
+## 6.1. Global Feature Importance
+
+The plot below ranks features by their overall impact on the model's output.
+
+![SHAP Global Importance](figures/interpretability/shap_importance.png){width=80%}
+
+## 6.2. Detailed Impact (Summary Plot)
+
+This plot shows how the value of each feature impacts the risk. Red dots represent high feature values, blue dots represent low values.
+
+![SHAP Summary Plot](figures/interpretability/shap_summary.png){width=80%}
+
+**Key Interpretations:**
+1.  **Age (`pre6_mean__edad_meses`)**: Younger age (blue dots) is associated with lower risk scores in some contexts, but the relationship is non-linear.
+2.  **Counseling (`intensidad_consejeria`)**: Higher intensity of counseling (red dots) tends to push the risk score down (left side), acting as a protective factor.
+3.  **Vaccines (`flg_consj_vacunas`)**: Presence of vaccination counseling is strongly associated with lower risk.
+
+# 7. Conclusions and Recommendations
+
+## 7.1. Conclusions
+1.  **Predictive Power**: The Random Forest model achieves an AUC of **0.81**, indicating strong capability to discriminate between at-risk and healthy children.
+2.  **Data Quality**: The consolidation process successfully integrated disparate data sources, though class imbalance remains a challenge handled effectively by SMOTE.
+3.  **Key Drivers**: The analysis confirms that consistent monitoring (vaccines, counseling) and biological factors (age, growth) are the primary drivers of developmental risk.
+
+## 7.2. Recommendations for TANI
+1.  **Targeted Intervention**: Use the model's probability scores to prioritize home visits for children in the top 10% of risk.
+2.  **Focus on First Year**: Intensify monitoring during the first 12 months, as this is the critical window for detection.
+3.  **Enhance Counseling**: The data suggests counseling is effective. TANI should standardize and potentially increase the dosage of counseling sessions for at-risk families.
+4.  **Data Collection**: Improve the digitization of "Medical Advice" and "Initial Diagnosis" to reduce missing data and further improve model accuracy.

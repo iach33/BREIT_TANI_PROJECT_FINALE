@@ -9,11 +9,13 @@ RAW_DATA_DIR = DATA_DIR / "raw"
 INTERMEDIATE_DATA_DIR = DATA_DIR / "intermediate"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
 EXTERNAL_DATA_DIR = DATA_DIR / "external"
-FIGURES_DIR = PROJECT_ROOT / "reports" / "figures"
+REPORTS_DIR = PROJECT_ROOT / "reports"
+FIGURES_DIR = REPORTS_DIR / "figures"
 
 # Ensure directories exist
 RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
 PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
+REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
 # File names
