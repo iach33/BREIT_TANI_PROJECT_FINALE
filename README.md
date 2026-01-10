@@ -25,17 +25,31 @@ uv sync
 
 ```text
 ├── data/
-│   ├── raw/            # Archivos Excel originales (DATA PROYECTO BREIT.xlsx, etc.)
-│   └── processed/      # Datasets generados por el pipeline
-├── notebooks/          # Notebooks de exploración (Jupyter/Quarto)
-├── reports/            # Reportes generados y figuras
+│   ├── raw/              # Archivos Excel originales (DATA PROYECTO BREIT.xlsx, etc.)
+│   ├── processed/        # Datasets generados por el pipeline
+│   └── external/         # Tablas OMS para cálculo de z-scores
+├── notebooks/            # Notebooks ejecutables de análisis
+│   ├── 01_eda_comprehensive.qmd       # Análisis exploratorio profundo
+│   └── 02_model_evaluation.qmd        # Evaluación de modelos y fairness
+├── reports/              # Reportes finales y figuras
+│   ├── final_report.qmd  # Reporte final del proyecto (MIT)
+│   ├── final_report.pdf  # PDF generado
+│   └── figures/          # Visualizaciones (EDA, modeling, interpretability)
 ├── src/
-│   ├── config/         # Configuraciones y rutas (settings.py)
-│   ├── data/           # Scripts de limpieza y carga
-│   ├── features/       # Ingeniería de características (build_features.py)
-│   ├── pipelines/      # Scripts de ejecución (01_preprocessing.py, 02_eda.py)
-│   └── visualization/  # Funciones de ploteo
-└── pyproject.toml      # Definición de dependencias
+│   ├── config/           # Configuraciones y rutas (settings.py)
+│   ├── data/             # Scripts de limpieza y carga
+│   ├── features/         # Ingeniería de características (build_features.py, oms_zscores.py)
+│   ├── models/           # Entrenamiento, evaluación e interpretabilidad
+│   ├── pipelines/        # Scripts de ejecución secuencial
+│   │   ├── 01_preprocessing.py  # Consolidación y limpieza
+│   │   ├── 02_eda.py            # Análisis exploratorio básico
+│   │   └── 03_modeling.py       # Entrenamiento de modelos
+│   └── visualization/    # Funciones de ploteo
+├── docs/                 # Documentación del proyecto
+│   ├── rubrica.jpeg      # Rúbrica de evaluación MIT
+│   └── ejemplo_reporte.md # Ejemplo de reporte anterior
+├── CLAUDE.md             # Documentación para Claude Code (guía del proyecto)
+└── pyproject.toml        # Definición de dependencias
 ```
 
 ## ⚙️ Ejecución de Pipelines
@@ -81,6 +95,134 @@ uv run src/pipelines/03_modeling.py
 *   `model_comparison.csv`: Tabla comparativa de métricas (AUC, Precision, Recall, F1).
 *   `figures/modeling/`: Gráficos de evaluación (Matrices de Confusión, Curvas ROC, Feature Importance).
 *   `figures/interpretability/`: **Análisis SHAP** del mejor modelo (Summary Plot, Global Importance).
+
+### 4. Validación Temporal (Out-of-Time Validation)
+Evalúa los modelos en un conjunto de test **temporal** (pacientes observados en periodos futuros).
+*   **Split Temporal**: 80% entrenamiento (hasta Junio 2025), 20% test (después Junio 2025).
+*   **Evaluación**: Compara rendimiento en test aleatorio vs test temporal.
+*   **Degradación**: Mide caída de performance en datos futuros (drift temporal).
+
+```bash
+uv run src/pipelines/04_temporal_validation.py
+```
+
+**Salidas generadas en `reports/`:**
+*   `model_comparison_temporal.csv`: Métricas en test set temporal.
+*   `model_comparison_random_vs_temporal.csv`: Comparación de degradación entre test aleatorio y temporal.
+
+**Hallazgos Clave**:
+*   Random Forest Optimized: 6.4% degradación (AUC 0.810 → 0.758)
+*   Logistic Regression: 5.6% degradación (más estable temporalmente)
+*   XGBoost: 22.3% degradación (posible overfitting)
+
+### 5. Interpretabilidad Avanzada (SHAP Comprehensivo)
+Genera visualizaciones avanzadas de SHAP para interpretar el modelo ganador.
+*   **Gráficos Globales**: Summary plot, bar plot de importancia
+*   **Casos Individuales**: Waterfall plots (alto/bajo riesgo), force plots
+*   **Relaciones No-Lineales**: Dependence plots para top 6 features
+*   **Interacciones**: Interaction plot entre top 2 features
+*   **Patrones**: Heatmap de SHAP values (30 casos × 15 features)
+
+```bash
+uv run src/pipelines/05_advanced_interpretability.py
+```
+
+**Salidas generadas en `reports/figures/interpretability/`:**
+*   `shap_summary.png`, `shap_importance.png`: Importancia global
+*   `shap_waterfall_high_risk.png`, `shap_waterfall_low_risk.png`: Explicaciones individuales
+*   `shap_dependence_1_*.png` a `shap_dependence_6_*.png`: Dependence plots
+*   `shap_interaction_top2.png`: Interacción entre top 2 features
+*   `shap_heatmap.png`: Patrones de SHAP values
+*   `shap_force_high_risk.png`: Force plot caso alto riesgo
+*   `shap_statistics.csv`: Estadísticas de SHAP por feature
+*   `shap_feature_directions.csv`: Análisis de direccionalidad
+
+**Insights Clave**:
+*   **Intensidad de consejería**: Efecto protector fuerte (SHAP: -0.023)
+*   **Edad máxima en ventana**: Mayor edad = menor riesgo (SHAP: -0.019)
+*   **Consejería en vacunas**: Proxy de engagement parental (SHAP: -0.022)
+*   **Threshold crítico**: 5+ sesiones de consejería para protección óptima
+
+---
+
+## 📓 Notebooks de Análisis Comprehensivo
+
+El proyecto incluye notebooks ejecutables en formato **Quarto** (`.qmd`) para análisis profundo y reproducible.
+
+### 1. EDA Comprehensivo (`notebooks/01_eda_comprehensive.qmd`)
+
+Análisis exploratorio riguroso alineado con estándares académicos (MIT):
+
+**Contenido:**
+*   **Data Quality Assessment**: Análisis de valores faltantes, outliers, distribuciones
+*   **Univariate Analysis**: Estadísticas descriptivas robustas (media, mediana, skewness, kurtosis)
+*   **Bivariate Analysis**: Correlaciones, tests estadísticos (Mann-Whitney U, Chi-cuadrado)
+*   **Subgroup Analysis**: Análisis estratificado por edad y sexo
+*   **Advanced Visualizations**: Violin plots, pairplots, correlation heatmaps, mutual information
+
+**Ejecución:**
+```bash
+# Renderizar a HTML
+quarto render notebooks/01_eda_comprehensive.qmd
+```
+
+**Salidas:**
+*   `notebooks/01_eda_comprehensive.html`: Reporte HTML interactivo
+*   `reports/figures/`: Gráficos avanzados (pairplots, heatmaps, boxplots, etc.)
+
+### 2. Evaluación de Modelos y Fairness (`notebooks/02_model_evaluation.qmd`)
+
+Evaluación rigurosa de robustez, estabilidad y equidad del modelo:
+
+**Contenido:**
+*   **Experimental Design**: Documentación de estrategia de split, cross-validation, manejo de desbalance
+*   **Robustness Analysis**:
+    - Learning curves (tamaño de datos vs performance)
+    - Cross-validation stability (15 folds × 3 repeticiones)
+    - Performance segmentado por edad
+*   **Fairness Evaluation**:
+    - Análisis de equidad por sexo (AUC parity, precision parity)
+    - Trade-off precision-recall
+*   **Ethical Considerations**: Costos de errores, limitaciones, recomendaciones de deployment
+
+**Ejecución:**
+```bash
+# Renderizar a HTML
+quarto render notebooks/02_model_evaluation.qmd
+```
+
+**Salidas:**
+*   `notebooks/02_model_evaluation.html`: Reporte de evaluación completo
+*   `reports/figures/modeling/`: Learning curves, stability plots, fairness comparisons
+
+---
+
+### 3. Reporte Final MIT (`reports/final_report.qmd`)
+
+Reporte consolidado para entrega al MIT, integrando todos los análisis:
+
+**Contenido:**
+*   Executive Summary con hallazgos clave
+*   Introducción y contexto (TANI, desarrollo infantil, objetivos)
+*   Data Consolidation (pipeline de limpieza)
+*   **EDA Summary** (con referencias a notebook 01)
+*   Modeling Methodology y Feature Selection
+*   **Model Results** (comparación de 8 modelos)
+*   **Robustness & Fairness Analysis** (con referencias a notebook 02)
+*   Ethical Considerations & Limitations
+*   Conclusions & Recommendations (12 recomendaciones accionables)
+*   References y Appendices
+
+**Renderizado a PDF:**
+```bash
+# Generar PDF final para entrega
+quarto render reports/final_report.qmd --to pdf
+```
+
+**Salida:**
+*   `reports/final_report.pdf`: Reporte final listo para entrega MIT
+
+---
 
 ## 📊 Diccionario de Datos (Salidas)
 
