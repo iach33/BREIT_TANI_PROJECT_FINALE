@@ -45,10 +45,6 @@ uv sync
 │   │   ├── 02_eda.py            # Análisis exploratorio básico
 │   │   └── 03_modeling.py       # Entrenamiento de modelos
 │   └── visualization/    # Funciones de ploteo
-├── docs/                 # Documentación del proyecto
-│   ├── rubrica.jpeg      # Rúbrica de evaluación MIT
-│   └── ejemplo_reporte.md # Ejemplo de reporte anterior
-├── CLAUDE.md             # Documentación para Claude Code (guía del proyecto)
 └── pyproject.toml        # Definición de dependencias
 ```
 
