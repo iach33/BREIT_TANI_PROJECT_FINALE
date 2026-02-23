@@ -5,6 +5,10 @@ Adapta funciones de:
   - src/data/preprocessing.py
   - src/features/build_features.py (funciones de tracking y nacimiento)
   - src/pipelines/01_preprocessing.py (orquestacion de consejeria)
+
+Soporta dos formatos de Excel:
+  - Formato "LISTA": una sola hoja con nutricion + desarrollo + consejeria
+  - Formato separado: hojas DESNUTRICION + DESARROLLO (y consejeria aparte)
 """
 
 import logging
@@ -138,9 +142,12 @@ def _control_esperado(mt):
 
 
 def _calcular_flg_consejeria(valor):
-    """Convierte VERDADERO/FALSO textual a 1/0."""
+    """Convierte valores de consejeria (boolean, texto, numerico) a 1/0."""
     if pd.isna(valor):
         return np.nan
+    # Manejar booleanos nativos de Python/pandas
+    if isinstance(valor, (bool, np.bool_)):
+        return 1 if valor else 0
     v = str(valor).strip().upper()
     if v in ("VERDADERO", "TRUE", "1"):
         return 1
@@ -154,56 +161,64 @@ def _calcular_flg_consejeria(valor):
 # ---------------------------------------------------------------------------
 
 
-def load_nutrition_data(raw_data_path: str) -> pd.DataFrame:
-    """Carga la hoja DESNUTRICION del Excel mensual."""
-    logger.info("Cargando datos de nutricion desde %s", raw_data_path)
-    df = pd.read_excel(raw_data_path, sheet_name="DESNUTRICION")
-    df = _estandarizar_cols(df)
-    logger.info("Nutricion: %d filas x %d columnas", *df.shape)
-    return df
-
-
-def load_development_data(raw_data_path: str) -> pd.DataFrame:
-    """Carga la hoja DESARROLLO del Excel mensual."""
-    logger.info("Cargando datos de desarrollo desde %s", raw_data_path)
-    df = pd.read_excel(raw_data_path, sheet_name="DESARROLLO")
-    df = _estandarizar_cols(df)
-    logger.info("Desarrollo: %d filas x %d columnas", *df.shape)
-    return df
-
-
-def merge_nutrition_development(
-    df_nutrition: pd.DataFrame,
-    df_development: pd.DataFrame,
-) -> pd.DataFrame:
+def load_raw_data(raw_data_path: str) -> pd.DataFrame:
     """
-    Consolida nutricion y desarrollo: deduplicar, merge inner en keys comunes.
-    Adaptado de preprocessing.consolidar_datasets() (solo parte 'new').
+    Carga datos del Excel mensual.
+
+    Soporta dos formatos:
+      - Hoja unica "LISTA" (formato produccion): toda la data consolidada
+      - Hojas separadas "DESNUTRICION" + "DESARROLLO" (formato entrenamiento)
     """
-    keys = ["Fecha", "N_HC", "Tipo_Paciente", "N_Control"]
+    logger.info("Cargando datos desde %s", raw_data_path)
+    xl = pd.ExcelFile(raw_data_path)
+    sheet_names = xl.sheet_names
+    logger.info("Hojas encontradas: %s", sheet_names)
 
-    # Deduplicar
-    mask_nut = df_nutrition.duplicated(subset=keys, keep=False)
-    mask_dev = df_development.duplicated(subset=keys, keep=False)
-    df_nut_clean = df_nutrition[~mask_nut].copy()
-    df_dev_clean = df_development[~mask_dev].copy()
+    if "LISTA" in sheet_names:
+        # Formato produccion: una sola hoja con todo
+        df = pd.read_excel(xl, sheet_name="LISTA")
+        df = _estandarizar_cols(df)
+        logger.info("Formato LISTA: %d filas x %d columnas", *df.shape)
 
-    if mask_nut.sum() > 0:
-        logger.warning("Nutricion: %d filas duplicadas eliminadas", mask_nut.sum())
-    if mask_dev.sum() > 0:
-        logger.warning("Desarrollo: %d filas duplicadas eliminadas", mask_dev.sum())
+        # Deduplicar
+        keys = ["Fecha", "N_HC", "Tipo_Paciente", "N_Control"]
+        available_keys = [k for k in keys if k in df.columns]
+        if available_keys:
+            n_before = len(df)
+            df = df.drop_duplicates(subset=available_keys, keep="first")
+            n_dropped = n_before - len(df)
+            if n_dropped > 0:
+                logger.warning("Filas duplicadas eliminadas: %d", n_dropped)
 
-    # Columnas de interes del desarrollo
-    cols_dev_interest = ["(M) - FG", "(M) - FF", "(C) - Cog", "(L) - Len", "(S) - Soc"]
-    cols_dev_merge = keys + [c for c in cols_dev_interest if c in df_dev_clean.columns]
+    elif "DESNUTRICION" in sheet_names and "DESARROLLO" in sheet_names:
+        # Formato con hojas separadas
+        df_nut = pd.read_excel(xl, sheet_name="DESNUTRICION")
+        df_dev = pd.read_excel(xl, sheet_name="DESARROLLO")
+        df_nut = _estandarizar_cols(df_nut)
+        df_dev = _estandarizar_cols(df_dev)
 
-    df_consolidated = df_nut_clean.merge(
-        df_dev_clean[cols_dev_merge],
-        how="inner",
-        on=keys,
-    )
-    logger.info("Dataset consolidado: %d filas x %d columnas", *df_consolidated.shape)
-    return df_consolidated
+        keys = ["Fecha", "N_HC", "Tipo_Paciente", "N_Control"]
+
+        # Deduplicar
+        mask_nut = df_nut.duplicated(subset=keys, keep=False)
+        mask_dev = df_dev.duplicated(subset=keys, keep=False)
+        df_nut = df_nut[~mask_nut].copy()
+        df_dev = df_dev[~mask_dev].copy()
+
+        # Merge inner
+        cols_dev_interest = ["(M) - FG", "(M) - FF", "(C) - Cog", "(L) - Len", "(S) - Soc"]
+        cols_dev_merge = keys + [c for c in cols_dev_interest if c in df_dev.columns]
+        df = df_nut.merge(df_dev[cols_dev_merge], how="inner", on=keys)
+        logger.info("Formato separado: %d filas x %d columnas", *df.shape)
+    else:
+        # Intentar primera hoja
+        df = pd.read_excel(xl, sheet_name=0)
+        df = _estandarizar_cols(df)
+        logger.warning("Formato no reconocido. Usando primera hoja: %d filas x %d columnas", *df.shape)
+
+    xl.close()
+    logger.info("Columnas cargadas: %s", df.columns.tolist())
+    return df
 
 
 def clean_patients(df: pd.DataFrame) -> pd.DataFrame:
@@ -316,11 +331,83 @@ def parse_zscores(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def process_counseling_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Procesa columnas de consejeria.
+
+    Soporta dos formatos:
+      - Columnas C_* (boolean True/False) del formato LISTA
+      - Columnas ya procesadas flg_consj_* (si vienen de un merge previo)
+
+    Mapeo de columnas del formato LISTA:
+      C_lact_materna    -> flg_consj_lact_materna
+      C_hig_corporal    -> flg_consj_higne_corporal
+      C_hig_bucal       -> flg_consj_higne_bucal
+      C_supl_hierro     -> flg_consj_supl_hierro
+      C_act_dit         -> flg_consj_desarrollo
+      C_cuid_vacuna     -> flg_consj_vacunas
+    """
+    df = df.copy()
+
+    # Mapeo de columnas formato LISTA -> flags del modelo
+    col_map = {
+        "C_lact_materna": "flg_consj_lact_materna",
+        "C_hig_corporal": "flg_consj_higne_corporal",
+        "C_hig_bucal": "flg_consj_higne_bucal",
+        "C_supl_hierro": "flg_consj_supl_hierro",
+        "C_act_dit": "flg_consj_desarrollo",
+        "C_cuid_vacuna": "flg_consj_vacunas",
+    }
+
+    # Mapeo alternativo: formato con columnas largas (hoja CONSEJERÍAS)
+    col_map_alt = {
+        "Consejería Lactancia Materna": "flg_consj_lact_materna",
+        "Consejería Higiene Corporal": "flg_consj_higne_corporal",
+        "Consejería Higiene Bucal": "flg_consj_higne_bucal",
+        "Consejería Suplementación con Hierro": "flg_consj_supl_hierro",
+        "Consejería Actividades Desarrollo": "flg_consj_desarrollo",
+        "Consejería Cuidados post vacunas": "flg_consj_vacunas",
+    }
+
+    processed = False
+
+    # Intentar formato LISTA (columnas C_*)
+    for col_src, col_dst in col_map.items():
+        if col_src in df.columns:
+            df[col_dst] = df[col_src].apply(_calcular_flg_consejeria)
+            processed = True
+
+    # Intentar formato largo (Consejería *)
+    if not processed:
+        for col_src, col_dst in col_map_alt.items():
+            if col_src in df.columns:
+                df[col_dst] = df[col_src].apply(_calcular_flg_consejeria)
+                processed = True
+
+    if not processed:
+        logger.warning("No se encontraron columnas de consejeria en el dataset")
+        for col_dst in col_map.values():
+            df[col_dst] = np.nan
+
+    # Intensidad de consejeria
+    cols_consj = [c for c in df.columns if c.startswith("flg_consj_")]
+    if cols_consj:
+        df["intensidad_consejeria"] = df[cols_consj].sum(axis=1)
+    else:
+        df["intensidad_consejeria"] = 0
+
+    n_flags = sum(1 for c in col_map.values() if c in df.columns and df[c].notna().any())
+    logger.info("Consejeria procesada: %d flags activos", n_flags)
+    return df
+
+
 def calculate_control_tracking(df: pd.DataFrame) -> pd.DataFrame:
     """
     Calcula control_esperado, primer_alguna, primer_control_esperado,
     ultimo_control, cant_controles_primer_alguna.
-    Adaptado de build_features.
+
+    En scoring, flg_alguna aun no existe en este punto, asi que
+    primer_alguna sera NaN y cant_controles usa ultimo_control como umbral.
     """
     df = df.copy()
 
@@ -364,7 +451,7 @@ def calculate_control_tracking(df: pd.DataFrame) -> pd.DataFrame:
             return np.nan
         return (g["control_esperado"] < thr).sum()
 
-    s_cant = d.groupby("N_HC", group_keys=False).apply(_per_hc)
+    s_cant = d.groupby("N_HC", group_keys=False).apply(_per_hc, include_groups=False)
     df["cant_controles_primer_alguna"] = df["N_HC"].map(s_cant)
 
     logger.info("Control tracking calculado")
@@ -377,11 +464,15 @@ def filter_scoreable_population(
 ) -> pd.DataFrame:
     """
     Filtra pacientes que pueden ser scored.
-    Adaptado de preprocessing.filtrar_poblacion_objetivo() para prediccion:
-    - Sin filtro de anio (toda la data es reciente en produccion)
-    - primer_control_esperado in [1,2,3]
-    - cant_controles_primer_alguna >= min_controls
-    - ultimo_control >= 19
+
+    Criterios adaptados para datos de produccion (export parcial, no historial
+    completo desde nacimiento):
+    - cant_controles_primer_alguna >= min_controls (controles previos al ultimo)
+    - ultimo_control >= 19 (paciente tiene al menos ~19 meses de edad)
+
+    NOTA: El filtro de primer_control_esperado in [1,2,3] del pipeline de
+    entrenamiento se omite porque en datos de produccion el primer registro
+    del export no necesariamente corresponde al primer control desde nacimiento.
     """
     df = df.copy()
 
@@ -390,69 +481,25 @@ def filter_scoreable_population(
         df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
 
     mask = (
-        df["primer_control_esperado"].isin([1, 2, 3])
-        & (df["cant_controles_primer_alguna"] >= min_controls)
+        (df["cant_controles_primer_alguna"] >= min_controls)
         & (df["ultimo_control"] >= 19)
     )
 
     nhc_validos = df.loc[mask, "N_HC"].unique()
     df_filtered = df[df["N_HC"].isin(nhc_validos)].copy()
 
+    n_total = df["N_HC"].nunique()
     logger.info(
-        "Poblacion filtrada: %d pacientes unicos, %d filas",
+        "Poblacion filtrada: %d / %d pacientes unicos, %d filas",
         len(nhc_validos),
+        n_total,
         len(df_filtered),
     )
+    if len(nhc_validos) == 0:
+        logger.warning(
+            "ATENCION: Ningun paciente paso el filtro. "
+            "Verificar que la data tenga pacientes con suficiente historial "
+            "(controles >= %d, ultimo_control >= 19)",
+            min_controls,
+        )
     return df_filtered
-
-
-def load_and_merge_counseling(
-    df: pd.DataFrame,
-    counseling_data_path: str,
-) -> pd.DataFrame:
-    """
-    Carga consejeria, calcula flags, merge con dataset filtrado.
-    Adaptado de 01_preprocessing.py lineas 140-193.
-    """
-    df = df.copy()
-
-    logger.info("Cargando datos de consejeria desde %s", counseling_data_path)
-    df_cons = pd.read_excel(counseling_data_path, sheet_name="CONSEJERÍAS")
-    df_cons = _estandarizar_cols(df_cons)
-
-    # Deduplicar
-    keys = ["Fecha", "N_HC", "N_Control"]
-    mask_dup = df_cons.duplicated(subset=keys, keep=False)
-    df_cons = df_cons[~mask_dup].copy()
-
-    # Flags de consejeria
-    flag_map = {
-        "Consejería Lactancia Materna": "flg_consj_lact_materna",
-        "Consejería Higiene Corporal": "flg_consj_higne_corporal",
-        "Consejería Higiene Bucal": "flg_consj_higne_bucal",
-        "Consejería Suplementación con Hierro": "flg_consj_supl_hierro",
-        "Consejería Actividades Desarrollo": "flg_consj_desarrollo",
-        "Consejería Cuidados post vacunas": "flg_consj_vacunas",
-    }
-
-    for col, flag_name in flag_map.items():
-        if col in df_cons.columns:
-            df_cons[flag_name] = df_cons[col].apply(_calcular_flg_consejeria)
-
-    # Columnas para merge
-    merge_keys = ["Fecha", "N_HC", "Tipo_Paciente"]
-    cols_flags = [v for v in flag_map.values() if v in df_cons.columns]
-    cols_to_use = merge_keys + cols_flags
-    cols_to_use = [c for c in cols_to_use if c in df_cons.columns]
-
-    df_merged = df.merge(df_cons[cols_to_use], how="left", on=merge_keys)
-
-    # Intensidad de consejeria
-    cols_consj = [c for c in df_merged.columns if "flg_consj_" in c]
-    if cols_consj:
-        df_merged["intensidad_consejeria"] = df_merged[cols_consj].sum(axis=1)
-    else:
-        df_merged["intensidad_consejeria"] = 0
-
-    logger.info("Datos de consejeria integrados. Shape: %s", df_merged.shape)
-    return df_merged

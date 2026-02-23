@@ -1,0 +1,46 @@
+# =============================================================================
+# TANI Scoring Pipeline - Parametros de Configuracion
+# =============================================================================
+
+# --- Rutas de datos de entrada ---
+# Ruta al Excel mensual con datos CRED (formato LISTA o DESNUTRICION/DESARROLLO)
+raw_data_path: "../data_pred/CRED - AGOSTO A ENERO.xlsx"
+
+# --- Rutas de tablas de referencia ---
+# Directorio con las 8 tablas de referencia OMS (wfa_Boys.xlsx, etc.)
+oms_tables_path: "data/06_external"
+
+# --- Rutas de artefactos del modelo ---
+model_path: "data/04_models/model.joblib"
+selected_features_path: "data/04_models/selected_features.json"
+model_metadata_path: "data/04_models/model_metadata.json"
+
+# --- Ruta de datos de entrenamiento (solo para model_export pipeline) ---
+model_ready_training_path: "../data/processed/tani_model_ready.csv"
+model_artifacts_dir: "data/04_models"
+
+# --- Ruta de salida ---
+score_output_path: "data/05_scores/score_report.csv"
+
+# --- Parametros de feature engineering ---
+window_size: 6
+milestone_months:
+  - 12
+  - 24
+  - 36
+
+# --- Parametros de filtrado ---
+min_controls_for_scoring: 2
+
+# --- Parametros de feature selection (solo model_export) ---
+iv_threshold: 0.02
+corr_threshold: 0.9
+
+# --- Parametros de clasificacion de riesgo ---
+# Score en escala 0-100 (100=mejor, 0=alto riesgo). Formula: round((1 - prob) * 100)
+# Thresholds derivados empiricamente del test set (n=959, 27 deficit+):
+#   - 64: Best F1 threshold (prob=0.36) -> Precision=62.5%, Recall=37.0%
+#   - 88: Youden's J optimo (prob=0.12) -> Sensitivity=70.4%, Specificity=89.6%
+# Alto: score < 64 | Medio: 64 <= score < 88 | Bajo: score >= 88
+risk_threshold_high: 64
+risk_threshold_medium: 88

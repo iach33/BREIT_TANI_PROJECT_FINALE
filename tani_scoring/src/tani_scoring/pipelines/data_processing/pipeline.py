@@ -8,11 +8,9 @@ from .nodes import (
     clean_patients,
     convert_age_to_months,
     filter_scoreable_population,
-    load_and_merge_counseling,
-    load_development_data,
-    load_nutrition_data,
-    merge_nutrition_development,
+    load_raw_data,
     parse_zscores,
+    process_counseling_columns,
 )
 
 
@@ -20,22 +18,10 @@ def create_pipeline(**kwargs) -> Pipeline:
     return pipeline(
         [
             node(
-                func=load_nutrition_data,
+                func=load_raw_data,
                 inputs="params:raw_data_path",
-                outputs="raw_nutrition",
-                name="load_nutrition_data",
-            ),
-            node(
-                func=load_development_data,
-                inputs="params:raw_data_path",
-                outputs="raw_development",
-                name="load_development_data",
-            ),
-            node(
-                func=merge_nutrition_development,
-                inputs=["raw_nutrition", "raw_development"],
                 outputs="consolidated",
-                name="merge_nutrition_development",
+                name="load_raw_data",
             ),
             node(
                 func=clean_patients,
@@ -62,8 +48,14 @@ def create_pipeline(**kwargs) -> Pipeline:
                 name="parse_zscores",
             ),
             node(
-                func=calculate_control_tracking,
+                func=process_counseling_columns,
                 inputs="with_zscores",
+                outputs="with_counseling",
+                name="process_counseling_columns",
+            ),
+            node(
+                func=calculate_control_tracking,
+                inputs="with_counseling",
                 outputs="tracked",
                 name="calculate_control_tracking",
             ),
@@ -72,12 +64,6 @@ def create_pipeline(**kwargs) -> Pipeline:
                 inputs=["tracked", "params:min_controls_for_scoring"],
                 outputs="filtered",
                 name="filter_scoreable_population",
-            ),
-            node(
-                func=load_and_merge_counseling,
-                inputs=["filtered", "params:counseling_data_path"],
-                outputs="with_counseling",
-                name="load_and_merge_counseling",
             ),
         ]
     )

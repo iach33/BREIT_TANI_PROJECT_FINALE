@@ -305,6 +305,12 @@ def calculate_oms_zscores(
         return pd.Series(res)
 
     logger.info("Calculando Z-scores OMS para %d filas...", len(df))
+    if df.empty:
+        df["zscore_peso_edad"] = np.nan
+        df["zscore_talla_edad"] = np.nan
+        df["zscore_peso_talla"] = np.nan
+        return df
+
     cols_z = df.apply(_procesar_fila, axis=1)
     cols_z.columns = ["zscore_peso_edad", "zscore_talla_edad", "zscore_peso_talla"]
     df[cols_z.columns] = cols_z

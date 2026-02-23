@@ -1,0 +1,11 @@
+# =============================================================================
+# TANI Scoring Pipeline - Data Catalog
+# =============================================================================
+# La mayoria de datasets son in-memory (transitorios entre nodos).
+# Solo se persisten los artefactos finales.
+
+score_report:
+  type: pandas.CSVDataset
+  filepath: data/05_scores/score_report.csv
+  save_args:
+    index: false

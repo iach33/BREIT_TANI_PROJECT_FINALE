@@ -20,7 +20,7 @@ def create_pipeline(**kwargs) -> Pipeline:
         [
             node(
                 func=calculate_development_flags,
-                inputs="with_counseling",
+                inputs="filtered",
                 outputs="with_dev_flags",
                 name="calculate_development_flags",
             ),

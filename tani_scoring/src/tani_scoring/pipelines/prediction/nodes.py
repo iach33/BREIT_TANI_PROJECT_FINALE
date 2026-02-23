@@ -65,15 +65,19 @@ def generate_predictions(
     # predict_proba -> probabilidad de clase positiva (deficit)
     probas = model.predict_proba(X)[:, 1]
 
+    # Invertir a escala 0-100: 100 = mejor (sin riesgo), 0 = peor (alto riesgo)
+    score_100 = np.round((1 - probas) * 100).astype(int)
+
     df_pred = pd.DataFrame({
         "N_HC": nhc,
-        "risk_score": probas,
+        "risk_score": score_100,
     })
 
     logger.info(
-        "Predicciones generadas. Score medio: %.4f, max: %.4f",
-        probas.mean(),
-        probas.max(),
+        "Predicciones generadas. Score medio: %.1f, min: %d, max: %d",
+        score_100.mean(),
+        score_100.min(),
+        score_100.max(),
     )
     return df_pred
 
@@ -84,15 +88,24 @@ def classify_risk(
     threshold_medium: float,
 ) -> pd.DataFrame:
     """
-    Asigna categorias de riesgo basadas en thresholds.
-    Alto >= threshold_high, Medio >= threshold_medium, Bajo < threshold_medium.
+    Asigna categorias de riesgo basadas en thresholds empiricos.
+
+    Score esta en escala 0-100 (100 = mejor, 0 = alto riesgo).
+    Thresholds derivados del test set (n=959, 27 positivos):
+      - threshold_high=64: Best F1 (prob=0.36), Precision=62.5%, Recall=37.0%
+      - threshold_medium=88: Youden's J optimo (prob=0.12), Recall=70.4%
+
+    Categorias:
+      - "Alto": score < threshold_high (probabilidad >= 0.36)
+      - "Medio": threshold_high <= score < threshold_medium (0.12 <= prob < 0.36)
+      - "Bajo": score >= threshold_medium (probabilidad < 0.12)
     """
     df = df_predictions.copy()
 
     def _classify(score):
-        if score >= threshold_high:
+        if score < threshold_high:
             return "Alto"
-        if score >= threshold_medium:
+        if score < threshold_medium:
             return "Medio"
         return "Bajo"
 
@@ -134,8 +147,8 @@ def generate_score_report(
             )
             df = df.merge(meta_uc, on="N_HC", how="left")
 
-    # Ordenar por riesgo descendente
-    df = df.sort_values("risk_score", ascending=False).reset_index(drop=True)
+    # Ordenar por riesgo: score ascendente (menor score = mayor riesgo primero)
+    df = df.sort_values("risk_score", ascending=True).reset_index(drop=True)
 
     # Guardar
     output = Path(output_path)

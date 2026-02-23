@@ -1,0 +1,10 @@
+{
+  "model_name": "RandomForest_Baseline",
+  "auc": 0.8135,
+  "n_features": 50,
+  "train_size": 3835,
+  "test_size": 959,
+  "training_date": "2026-02-23",
+  "model_file": "model.joblib",
+  "features_file": "selected_features.json"
+}
